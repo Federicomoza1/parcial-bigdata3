@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AeroCloud Ops — Centro de Operaciones y Analítica en Vivo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.85); opacity: 0.9; }
+      70% { transform: scale(1.8); opacity: 0; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+    .live-dot::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 9999px;
+      background-color: #10b981;
+      animation: pulse-ring 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+    .toast-enter {
+      animation: slideIn 0.22s ease-out forwards;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-sky-500/30">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-semibold tracking-tight text-white">AeroCloud Ops</h1>
+            <span id="stream-badge" class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
+              Kinesis: cargando...
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Airline Reservation System · Fast Path &amp; Star Schema</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div id="live-indicator" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
+          <span class="relative flex h-2.5 w-2.5 live-dot">
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+          </span>
+          <span id="live-indicator-text">En vivo</span>
+        </div>
+        <a href="/docs" target="_blank" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+          Swagger API
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+
+    <!-- =================================================================== -->
+    <!-- SECCION 1: PANEL LIVE VIEW (FAST PATH - TIEMPO REAL)                -->
+    <!-- =================================================================== -->
+    <section aria-labelledby="live-view-heading" class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-sky-400">Fast Path · Segundos</span>
+            <span class="text-slate-600">•</span>
+            <span id="last-updated" class="text-xs text-slate-400">Actualizando cada 3 s...</span>
+          </div>
+          <h2 id="live-view-heading" class="text-xl font-semibold text-white mt-0.5">Live View del Stream (Event Time)</h2>
+        </div>
+
+        <div class="flex items-center gap-2 self-start sm:self-auto">
+          <label for="window-select" class="text-xs font-medium text-slate-400">Ventana:</label>
+          <select id="window-select" class="bg-slate-900 border border-slate-700 text-slate-100 text-xs font-medium rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500">
+            <option value="1">Último 1 min</option>
+            <option value="5" selected>Últimos 5 min</option>
+            <option value="15">Últimos 15 min</option>
+          </select>
+          <button id="btn-refresh-live" type="button" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 transition">
+            Actualizar ahora
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 KPI Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- KPI: Búsquedas (Azul) -->
+        <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-5 shadow-sm hover:border-sky-500/40 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium uppercase tracking-wider text-slate-400">Búsquedas</span>
+            <span class="w-8 h-8 rounded-lg bg-sky-500/15 text-sky-400 flex items-center justify-center">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+              </svg>
+            </span>
+          </div>
+          <div id="kpi-searches" class="mt-3 text-3xl font-bold text-sky-400 tabular-nums">—</div>
+          <p class="mt-1 text-xs text-slate-500">Eventos <code class="text-slate-400">search_performed</code></p>
+        </div>
+
+        <!-- KPI: Reservas (Verde) -->
+        <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-5 shadow-sm hover:border-emerald-500/40 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium uppercase tracking-wider text-slate-400">Reservas</span>
+            <span class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </span>
+          </div>
+          <div id="kpi-reservations" class="mt-3 text-3xl font-bold text-emerald-400 tabular-nums">—</div>
+          <p class="mt-1 text-xs text-slate-500">Eventos <code class="text-slate-400">reservation_created</code></p>
+        </div>
+
+        <!-- KPI: Cancelaciones (Rojo) -->
+        <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-5 shadow-sm hover:border-rose-500/40 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium uppercase tracking-wider text-slate-400">Cancelaciones</span>
+            <span class="w-8 h-8 rounded-lg bg-rose-500/15 text-rose-400 flex items-center justify-center">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </span>
+          </div>
+          <div id="kpi-cancellations" class="mt-3 text-3xl font-bold text-rose-400 tabular-nums">—</div>
+          <p class="mt-1 text-xs text-slate-500">Eventos <code class="text-slate-400">reservation_cancelled</code></p>
+        </div>
+
+        <!-- KPI: Conversión (%) -->
+        <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-5 shadow-sm hover:border-indigo-500/40 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium uppercase tracking-wider text-slate-400">Conversión</span>
+            <span class="w-8 h-8 rounded-lg bg-indigo-500/15 text-indigo-400 flex items-center justify-center">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </span>
+          </div>
+          <div id="kpi-conversion" class="mt-3 text-3xl font-bold text-indigo-300 tabular-nums">—</div>
+          <p class="mt-1 text-xs text-slate-500">Reservas / Búsquedas en ventana</p>
+        </div>
+      </div>
+
+      <!-- Real-time Chart -->
+      <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="text-sm font-semibold text-white">Evolución en tiempo real de contadores</h3>
+            <p class="text-xs text-slate-400">Muestreo continuo desde <code class="text-slate-300">GET /analytics/live</code> (alimentado por el consumidor de Kinesis)</p>
+          </div>
+          <button id="btn-clear-chart" type="button" class="text-xs text-slate-400 hover:text-slate-200 transition">
+            Reiniciar serie
+          </button>
+        </div>
+        <div class="relative h-60 w-full">
+          <canvas id="liveChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SECCION 2: SIMULADOR DE OPERACIONES (GENERADOR DE EVENTOS)          -->
+    <!-- =================================================================== -->
+    <section aria-labelledby="ops-heading" class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-400">Operaciones Aéreas · Productor de Eventos</span>
+          <h2 id="ops-heading" class="text-xl font-semibold text-white mt-0.5">Buscador de Vuelos, Reservas y Cancelaciones</h2>
+        </div>
+        <button id="btn-seed-flight" type="button" class="self-start sm:self-auto inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Crear vuelo demo para esta ruta
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left Column (7 cols): Search + Flight Results -->
+        <div class="lg:col-span-7 rounded-2xl bg-slate-900/90 border border-slate-800 p-5 space-y-5">
+          <form id="search-form" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+            <div>
+              <label for="origin" class="block text-xs font-medium text-slate-400 mb-1">Origen</label>
+              <select id="origin" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <option value="BOG" selected>BOG — Bogotá</option>
+                <option value="MDE">MDE — Medellín</option>
+                <option value="CLO">CLO — Cali</option>
+                <option value="CTG">CTG — Cartagena</option>
+                <option value="BAQ">BAQ — Barranquilla</option>
+                <option value="SMR">SMR — Santa Marta</option>
+                <option value="BGA">BGA — Bucaramanga</option>
+                <option value="PEI">PEI — Pereira</option>
+                <option value="CUC">CUC — Cúcuta</option>
+                <option value="ADZ">ADZ — San Andrés</option>
+                <option value="LET">LET — Leticia</option>
+                <option value="PSO">PSO — Pasto</option>
+              </select>
+            </div>
+            <div>
+              <label for="destination" class="block text-xs font-medium text-slate-400 mb-1">Destino</label>
+              <select id="destination" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <option value="CTG" selected>CTG — Cartagena</option>
+                <option value="MDE">MDE — Medellín</option>
+                <option value="BOG">BOG — Bogotá</option>
+                <option value="CLO">CLO — Cali</option>
+                <option value="BAQ">BAQ — Barranquilla</option>
+                <option value="SMR">SMR — Santa Marta</option>
+                <option value="BGA">BGA — Bucaramanga</option>
+                <option value="PEI">PEI — Pereira</option>
+                <option value="CUC">CUC — Cúcuta</option>
+                <option value="ADZ">ADZ — San Andrés</option>
+                <option value="LET">LET — Leticia</option>
+                <option value="PSO">PSO — Pasto</option>
+              </select>
+            </div>
+            <div>
+              <label for="travel-date" class="block text-xs font-medium text-slate-400 mb-1">Fecha de vuelo</label>
+              <input id="travel-date" type="date" value="2026-12-15" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500" />
+            </div>
+            <div>
+              <button type="submit" class="w-full px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold shadow-lg shadow-sky-600/20 transition flex items-center justify-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+                </svg>
+                Buscar
+              </button>
+            </div>
+          </form>
+
+          <!-- Passenger & Fare options for one-click booking -->
+          <div class="flex flex-wrap items-center gap-3 pt-1 pb-2 border-b border-slate-800/80 text-xs">
+            <div class="flex items-center gap-2">
+              <label for="passenger-name" class="text-slate-400">Pasajero:</label>
+              <input id="passenger-name" type="text" value="Laura Martínez" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-100 w-36 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </div>
+            <div class="flex items-center gap-2">
+              <label for="fare-class" class="text-slate-400">Cabina:</label>
+              <select id="fare-class" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                <option value="ECONOMY" selected>ECONOMY (1.0x)</option>
+                <option value="BUSINESS">BUSINESS (2.2x)</option>
+              </select>
+            </div>
+            <span class="text-slate-500 ml-auto hidden sm:inline">Session ID automático en <code class="text-slate-400">X-Session-Id</code></span>
+          </div>
+
+          <!-- Results Table -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead>
+                <tr class="text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  <th class="pb-2.5 font-medium">Vuelo</th>
+                  <th class="pb-2.5 font-medium">Ruta</th>
+                  <th class="pb-2.5 font-medium">Sillas</th>
+                  <th class="pb-2.5 font-medium">Tarifa Base</th>
+                  <th class="pb-2.5 font-medium text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="flights-tbody" class="divide-y divide-slate-800/70">
+                <tr>
+                  <td colspan="5" class="py-8 text-center text-slate-500 text-xs">
+                    Ejecuta una búsqueda para emitir <code class="text-sky-400">search_performed</code> y listar vuelos disponibles.<br/>
+                    Si no hay vuelos para esa fecha, pulsa <strong class="text-slate-300">“Crear vuelo demo para esta ruta”</strong>.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right Column (5 cols): Active Reservations & Cancel -->
+        <div class="lg:col-span-5 rounded-2xl bg-slate-900/90 border border-slate-800 p-5 flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-sm font-semibold text-white">Reservas de la sesión</h3>
+              <p class="text-xs text-slate-400">Cancela reservas para emitir <code class="text-rose-400">reservation_cancelled</code> y liberar silla</p>
+            </div>
+            <button id="btn-clear-res" type="button" class="text-xs text-slate-400 hover:text-slate-200 transition">
+              Limpiar
+            </button>
+          </div>
+
+          <div id="reservations-list" class="space-y-2.5 flex-1 overflow-y-auto max-h-80 pr-1">
+            <div class="py-10 text-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
+              Aún no has creado reservas en esta sesión.<br/>
+              Busca un vuelo y pulsa <strong class="text-emerald-400">Reservar</strong>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SECCION 3: CONTROL DEL ESQUEMA ESTRELLA (ANALYTICAL PATH)           -->
+    <!-- =================================================================== -->
+    <section aria-labelledby="star-heading" class="rounded-2xl bg-slate-900/90 border border-slate-800 p-6">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="space-y-1">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-amber-400">Analytical Path · Micro-Batch ETL</span>
+          <h2 id="star-heading" class="text-xl font-semibold text-white">Control del Esquema Estrella (S3 Parquet + Glue + Athena)</h2>
+          <p class="text-xs text-slate-400">
+            Reconstruye de forma idempotente las 5 tablas (<code class="text-slate-300">dim_date</code>, <code class="text-slate-300">dim_route</code> SCD2, <code class="text-slate-300">dim_fare_class</code>, <code class="text-slate-300">fact_search</code>, <code class="text-slate-300">fact_booking_event</code>) desde el Landing Zone en S3.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <div id="etl-status-badge" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-semibold bg-slate-800 border-slate-700 text-slate-300">
+            <span id="etl-status-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+            <span>Estado: <strong id="etl-status-text">CONSULTANDO...</strong></span>
+          </div>
+
+          <button id="btn-refresh-star" type="button" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/15 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg id="etl-spinner" class="w-4 h-4 hidden animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span id="btn-refresh-star-label">Refrescar Star Schema</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ETL Job Metadata / Stats -->
+      <div id="etl-meta" class="mt-4 pt-4 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div class="bg-slate-950/70 rounded-xl p-3 border border-slate-800/70">
+          <div class="text-slate-500">Último Job ID</div>
+          <div id="etl-job-id" class="mt-0.5 font-mono text-slate-200">—</div>
+        </div>
+        <div class="bg-slate-950/70 rounded-xl p-3 border border-slate-800/70">
+          <div class="text-slate-500">Eventos únicos procesados</div>
+          <div id="etl-distinct" class="mt-0.5 font-semibold text-slate-200 tabular-nums">—</div>
+        </div>
+        <div class="bg-slate-950/70 rounded-xl p-3 border border-slate-800/70">
+          <div class="text-slate-500">Filas fact_search / booking</div>
+          <div id="etl-facts" class="mt-0.5 font-semibold text-slate-200 tabular-nums">—</div>
+        </div>
+        <div class="bg-slate-950/70 rounded-xl p-3 border border-slate-800/70">
+          <div class="text-slate-500">Duración del último ETL</div>
+          <div id="etl-duration" class="mt-0.5 font-semibold text-slate-200 tabular-nums">—</div>
+        </div>
+      </div>
+      <div id="etl-error-box" class="hidden mt-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono"></div>
+    </section>
+
+  </main>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-2"></div>
+
+  <script>
+    // =========================================================================
+    // Helpers & Toast Notifications
+    // =========================================================================
+    const formatMoney = (cents) => {
+      const usd = (Number(cents || 0) / 100);
+      return '$' + usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const shortId = () => Math.random().toString(16).slice(2, 10);
+
+    function showToast(title, message, variant = 'info') {
+      const container = document.getElementById('toast-container');
+      const palette = {
+        info:    'bg-slate-900/95 border-sky-500/40 text-sky-300',
+        success: 'bg-slate-900/95 border-emerald-500/40 text-emerald-300',
+        danger:  'bg-slate-900/95 border-rose-500/40 text-rose-300',
+        warning: 'bg-slate-900/95 border-amber-500/40 text-amber-300',
+      };
+      const el = document.createElement('div');
+      el.className = `toast-enter pointer-events-auto rounded-xl border px-4 py-3 shadow-xl backdrop-blur-md ${palette[variant] || palette.info}`;
+      el.innerHTML = `
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="text-xs font-semibold">${title}</div>
+            <div class="text-[11px] text-slate-300 mt-0.5 leading-relaxed">${message}</div>
+          </div>
+          <button type="button" class="text-slate-500 hover:text-slate-200 text-xs" aria-label="Cerrar">✕</button>
+        </div>
+      `;
+      el.querySelector('button').onclick = () => el.remove();
+      container.appendChild(el);
+      setTimeout(() => el.remove(), 4500);
+    }
+
+    // =========================================================================
+    // Section 1: Live View Polling + Chart.js
+    // =========================================================================
+    const MAX_POINTS = 24;
+    const chartData = {
+      labels: [],
+      datasets: [
+        {
+          label: 'Búsquedas',
+          data: [],
+          borderColor: '#38bdf8',
+          backgroundColor: 'rgba(56, 189, 248, 0.12)',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true,
+          pointRadius: 2.5,
+        },
+        {
+          label: 'Reservas',
+          data: [],
+          borderColor: '#34d399',
+          backgroundColor: 'rgba(52, 211, 153, 0.10)',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true,
+          pointRadius: 2.5,
+        },
+        {
+          label: 'Cancelaciones',
+          data: [],
+          borderColor: '#fb7185',
+          backgroundColor: 'rgba(251, 113, 133, 0.10)',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true,
+          pointRadius: 2.5,
+        },
+      ],
+    };
+
+    const liveChart = new Chart(document.getElementById('liveChart').getContext('2d'), {
+      type: 'line',
+      data: chartData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            labels: { color: '#cbd5e1', boxWidth: 12, font: { size: 11 } },
+          },
+        },
+        scales: {
+          x: {
+            ticks: { color: '#64748b', maxRotation: 0, font: { size: 10 } },
+            grid: { color: 'rgba(51, 65, 85, 0.35)' },
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#64748b', precision: 0, font: { size: 10 } },
+            grid: { color: 'rgba(51, 65, 85, 0.35)' },
+          },
+        },
+      },
+    });
+
+    async function fetchHealth() {
+      try {
+        const r = await fetch('/health');
+        if (!r.ok) return;
+        const h = await r.json();
+        const badge = document.getElementById('stream-badge');
+        badge.textContent = `Kinesis: ${h.kinesis_stream} · Seed ${h.seed}`;
+        badge.classList.remove('hidden');
+        badge.classList.add('sm:inline-flex');
+      } catch (_) {}
+    }
+
+    async function pollLiveView() {
+      const win = document.getElementById('window-select').value;
+      try {
+        const resp = await fetch(`/analytics/live?window=${encodeURIComponent(win)}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+
+        document.getElementById('kpi-searches').textContent = Number(data.searches).toLocaleString('es-CO');
+        document.getElementById('kpi-reservations').textContent = Number(data.reservations).toLocaleString('es-CO');
+        document.getElementById('kpi-cancellations').textContent = Number(data.cancellations).toLocaleString('es-CO');
+        document.getElementById('kpi-conversion').textContent = `${(Number(data.conversion || 0) * 100).toFixed(1)}%`;
+
+        const nowStr = new Date().toLocaleTimeString('es-CO', { hour12: false });
+        document.getElementById('last-updated').textContent = `Última lectura: ${nowStr} (ventana ${data.window_minutes} min)`;
+        document.getElementById('live-indicator-text').textContent = 'En vivo';
+
+        chartData.labels.push(nowStr);
+        chartData.datasets[0].data.push(data.searches);
+        chartData.datasets[1].data.push(data.reservations);
+        chartData.datasets[2].data.push(data.cancellations);
+
+        if (chartData.labels.length > MAX_POINTS) {
+          chartData.labels.shift();
+          chartData.datasets.forEach((ds) => ds.data.shift());
+        }
+        liveChart.update('none');
+      } catch (err) {
+        document.getElementById('live-indicator-text').textContent = 'Sin conexión';
+        document.getElementById('last-updated').textContent = `Error consultando /analytics/live: ${err.message}`;
+      }
+    }
+
+    document.getElementById('window-select').addEventListener('change', () => {
+      chartData.labels = [];
+      chartData.datasets.forEach((ds) => (ds.data = []));
+      liveChart.update('none');
+      pollLiveView();
+    });
+
+    document.getElementById('btn-refresh-live').addEventListener('click', pollLiveView);
+    document.getElementById('btn-clear-chart').addEventListener('click', () => {
+      chartData.labels = [];
+      chartData.datasets.forEach((ds) => (ds.data = []));
+      liveChart.update('none');
+    });
+
+    // =========================================================================
+    // Section 2: Flight Search, Demo Flight Seeding, Reservations & Cancel
+    // =========================================================================
+    const STORAGE_KEY = 'aerocloud_session_reservations';
+    let sessionReservations = [];
+    try {
+      sessionReservations = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    } catch (_) {
+      sessionReservations = [];
+    }
+
+    function saveReservations() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionReservations.slice(0, 30)));
+      renderReservations();
+    }
+
+    function renderReservations() {
+      const container = document.getElementById('reservations-list');
+      if (!sessionReservations.length) {
+        container.innerHTML = `
+          <div class="py-10 text-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
+            Aún no has creado reservas en esta sesión.<br/>
+            Busca un vuelo y pulsa <strong class="text-emerald-400">Reservar</strong>.
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = sessionReservations.map((r) => {
+        const isCancelled = r.status === 'CANCELLED';
+        const statusBadge = isCancelled
+          ? '<span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">CANCELLED</span>'
+          : '<span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">CONFIRMED</span>';
+
+        return `
+          <div class="rounded-xl bg-slate-950/80 border border-slate-800 p-3 flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs font-semibold text-white truncate">${r.reservation_id}</span>
+                ${statusBadge}
+              </div>
+              <div class="text-[11px] text-slate-400 mt-1">
+                <strong class="text-slate-200">${r.route}</strong> · Vuelo ${r.flight_id} · ${r.fare_class} · ${formatMoney(r.price_cents)}
+              </div>
+            </div>
+            <button
+              type="button"
+              data-cancel-id="${r.reservation_id}"
+              ${isCancelled ? 'disabled' : ''}
+              class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                isCancelled
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  : 'bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30'
+              }"
+            >
+              ${isCancelled ? 'Cancelada' : 'Cancelar'}
+            </button>
+          </div>`;
+      }).join('');
+
+      container.querySelectorAll('[data-cancel-id]').forEach((btn) => {
+        btn.addEventListener('click', () => cancelReservation(btn.getAttribute('data-cancel-id')));
+      });
+    }
+
+    async function searchFlights(e) {
+      if (e) e.preventDefault();
+      const origin = document.getElementById('origin').value;
+      const destination = document.getElementById('destination').value;
+      const travelDate = document.getElementById('travel-date').value;
+      const sessionId = `ops-ui-${shortId()}`;
+
+      if (origin === destination) {
+        showToast('Ruta inválida', 'El origen y el destino deben ser diferentes.', 'warning');
+        return;
+      }
+
+      try {
+        const url = `/flights/search?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&date=${encodeURIComponent(travelDate)}`;
+        const resp = await fetch(url, { headers: { 'X-Session-Id': sessionId } });
+        if (!resp.ok) {
+          const detail = await resp.text();
+          throw new Error(`HTTP ${resp.status}: ${detail}`);
+        }
+        const data = await resp.json();
+        const flights = data.flights || [];
+
+        showToast(
+          'Evento publicado en Kinesis',
+          `<code>search_performed</code> (${origin}-${destination}, ${flights.length} vuelos) · Session <code>${sessionId}</code>`,
+          'info'
+        );
+
+        renderFlightsTable(flights, origin, destination, travelDate);
+        setTimeout(pollLiveView, 1200);
+      } catch (err) {
+        showToast('Error al buscar vuelos', err.message, 'danger');
+      }
+    }
+
+    function renderFlightsTable(flights, origin, destination, travelDate) {
+      const tbody = document.getElementById('flights-tbody');
+      if (!flights.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-8 text-center text-slate-400 text-xs">
+              No se encontraron vuelos para <strong>${origin}-${destination}</strong> el <strong>${travelDate}</strong>.<br/>
+              <span class="text-slate-500">(El evento <code class="text-sky-400">search_performed</code> sí fue enviado a Kinesis). Pulsa <strong>“Crear vuelo demo para esta ruta”</strong> arriba para agregar inventario.</span>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = flights.map((f) => {
+        const full = f.seats_available <= 0;
+        return `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="py-3 font-mono text-xs font-semibold text-sky-300">${f.flight_id}</td>
+            <td class="py-3 text-xs text-slate-200 font-medium">${f.route} <span class="text-slate-500 block text-[10px]">${f.flight_date}</span></td>
+            <td class="py-3 text-xs tabular-nums">
+              <span class="${full ? 'text-rose-400 font-semibold' : 'text-emerald-400 font-semibold'}">${f.seats_available}</span>
+              <span class="text-slate-500">/ ${f.capacity}</span>
+            </td>
+            <td class="py-3 text-xs font-medium text-slate-200 tabular-nums">${formatMoney(f.price_cents)}</td>
+            <td class="py-3 text-right">
+              <button
+                type="button"
+                data-book-flight="${f.flight_id}"
+                ${full ? 'disabled' : ''}
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  full
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow shadow-emerald-600/20'
+                }"
+              >
+                ${full ? 'Agotado' : 'Reservar'}
+              </button>
+            </td>
+          </tr>`;
+      }).join('');
+
+      tbody.querySelectorAll('[data-book-flight]').forEach((btn) => {
+        btn.addEventListener('click', () => bookFlight(btn.getAttribute('data-book-flight')));
+      });
+    }
+
+    async function seedDemoFlight() {
+      const origin = document.getElementById('origin').value;
+      const destination = document.getElementById('destination').value;
+      const travelDate = document.getElementById('travel-date').value;
+      if (origin === destination) {
+        showToast('Ruta inválida', 'Selecciona un origen y destino distintos.', 'warning');
+        return;
+      }
+      const fid = `AC${shortId().slice(0, 6).toUpperCase()}`;
+      const priceCents = 280000 + Math.floor(Math.random() * 250000);
+      try {
+        const resp = await fetch('/admin/flights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            flight_id: fid,
+            route: `${origin}-${destination}`,
+            flight_date: travelDate,
+            capacity: 25,
+            price_cents: priceCents,
+          }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        showToast('Vuelo creado', `Vuelo <code>${fid}</code> (${origin}-${destination}, 25 sillas) disponible.`, 'success');
+        await searchFlights();
+      } catch (err) {
+        showToast('Error creando vuelo', err.message, 'danger');
+      }
+    }
+
+    async function bookFlight(flightId) {
+      const passenger = (document.getElementById('passenger-name').value || 'Pasajero Demo').trim();
+      const fareClass = document.getElementById('fare-class').value;
+      try {
+        const resp = await fetch('/reservations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            flight_id: flightId,
+            passenger_name: passenger,
+            fare_class: fareClass,
+          }),
+        });
+        if (resp.status === 404) {
+          showToast('Vuelo no encontrado (404)', `El vuelo ${flightId} no existe.`, 'warning');
+          return;
+        }
+        if (resp.status === 409) {
+          showToast('Sin cupos (409)', `El vuelo ${flightId} ya no tiene sillas disponibles.`, 'warning');
+          return;
+        }
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+        const res = await resp.json();
+        sessionReservations.unshift(res);
+        saveReservations();
+
+        showToast(
+          'Reserva confirmada → Kinesis',
+          `<code>reservation_created</code> · ID <code>${res.reservation_id}</code> (${res.fare_class}, ${formatMoney(res.price_cents)}) · sin PII`,
+          'success'
+        );
+
+        // Refresh flight availability without emitting a second manual click if desired, or leave table updated
+        await updateSingleFlightSeats(flightId, -1);
+        setTimeout(pollLiveView, 1200);
+      } catch (err) {
+        showToast('Error al reservar', err.message, 'danger');
+      }
+    }
+
+    function updateSingleFlightSeats(flightId, delta) {
+      const btn = document.querySelector(`[data-book-flight="${flightId}"]`);
+      if (!btn) return;
+      const row = btn.closest('tr');
+      const seatSpan = row?.querySelector('td:nth-child(3) span:first-child');
+      if (seatSpan) {
+        const nextVal = Math.max(0, parseInt(seatSpan.textContent, 10) + delta);
+        seatSpan.textContent = String(nextVal);
+      }
+    }
+
+    async function cancelReservation(reservationId) {
+      try {
+        const resp = await fetch(`/reservations/${encodeURIComponent(reservationId)}/cancel`, {
+          method: 'POST',
+        });
+        if (resp.status === 404) {
+          showToast('Reserva no encontrada (404)', `No existe la reserva ${reservationId}.`, 'warning');
+          return;
+        }
+        if (resp.status === 409) {
+          showToast('Ya cancelada (409)', `La reserva ${reservationId} ya había sido cancelada previamente.`, 'warning');
+          const idx = sessionReservations.findIndex((r) => r.reservation_id === reservationId);
+          if (idx >= 0) {
+            sessionReservations[idx].status = 'CANCELLED';
+            saveReservations();
+          }
+          return;
+        }
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+        const updated = await resp.json();
+        const idx = sessionReservations.findIndex((r) => r.reservation_id === reservationId);
+        if (idx >= 0) {
+          sessionReservations[idx] = updated;
+          saveReservations();
+        }
+        updateSingleFlightSeats(updated.flight_id, +1);
+
+        showToast(
+          'Reserva cancelada → Kinesis',
+          `<code>reservation_cancelled</code> · ID <code>${reservationId}</code> · silla liberada`,
+          'danger'
+        );
+        setTimeout(pollLiveView, 1200);
+      } catch (err) {
+        showToast('Error al cancelar', err.message, 'danger');
+      }
+    }
+
+    document.getElementById('search-form').addEventListener('submit', searchFlights);
+    document.getElementById('btn-seed-flight').addEventListener('click', seedDemoFlight);
+    document.getElementById('btn-clear-res').addEventListener('click', () => {
+      sessionReservations = [];
+      saveReservations();
+    });
+
+    // =========================================================================
+    // Section 3: Star Schema ETL Control (Analytical Path)
+    // =========================================================================
+    let etlPollTimer = null;
+
+    function renderEtlStatus(data) {
+      const state = (data.state || 'UNKNOWN').toUpperCase();
+      const badge = document.getElementById('etl-status-badge');
+      const dot = document.getElementById('etl-status-dot');
+      const txt = document.getElementById('etl-status-text');
+      const btn = document.getElementById('btn-refresh-star');
+      const spinner = document.getElementById('etl-spinner');
+      const btnLabel = document.getElementById('btn-refresh-star-label');
+      const errBox = document.getElementById('etl-error-box');
+
+      txt.textContent = state;
+      badge.className = 'inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-semibold ';
+
+      if (state === 'RUNNING') {
+        badge.className += 'bg-amber-500/15 border-amber-500/40 text-amber-300';
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+        btn.disabled = true;
+        spinner.classList.remove('hidden');
+        btnLabel.textContent = 'Ejecutando ETL...';
+      } else if (state === 'SUCCEEDED') {
+        badge.className += 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300';
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+        btnLabel.textContent = 'Refrescar Star Schema';
+      } else if (state === 'FAILED') {
+        badge.className += 'bg-rose-500/15 border-rose-500/40 text-rose-300';
+        dot.className = 'w-2 h-2 rounded-full bg-rose-400';
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+        btnLabel.textContent = 'Reintentar Refresh';
+      } else {
+        badge.className += 'bg-slate-800 border-slate-700 text-slate-300';
+        dot.className = 'w-2 h-2 rounded-full bg-slate-400';
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+      }
+
+      document.getElementById('etl-job-id').textContent = data.job_id || '—';
+      const st = data.stats || {};
+      document.getElementById('etl-distinct').textContent =
+        st.distinct_events !== undefined ? Number(st.distinct_events).toLocaleString('es-CO') : '—';
+      document.getElementById('etl-facts').textContent =
+        st.fact_search_rows !== undefined
+          ? `${Number(st.fact_search_rows).toLocaleString('es-CO')} / ${Number(st.fact_booking_rows || 0).toLocaleString('es-CO')}`
+          : '—';
+      document.getElementById('etl-duration').textContent =
+        st.duration_seconds !== undefined ? `${st.duration_seconds} s` : '—';
+
+      if (data.error) {
+        errBox.textContent = `Error ETL: ${data.error}`;
+        errBox.classList.remove('hidden');
+      } else {
+        errBox.classList.add('hidden');
+      }
+    }
+
+    async function pollEtlStatus(notifyOnFinish = false) {
+      try {
+        const resp = await fetch('/admin/refresh-status');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        renderEtlStatus(data);
+
+        if (data.state === 'RUNNING') {
+          if (!etlPollTimer) {
+            etlPollTimer = setInterval(() => pollEtlStatus(true), 3000);
+          }
+        } else {
+          if (etlPollTimer) {
+            clearInterval(etlPollTimer);
+            etlPollTimer = null;
+          }
+          if (notifyOnFinish) {
+            if (data.state === 'SUCCEEDED') {
+              showToast('Star Schema actualizado', `ETL completado en ${data.stats?.duration_seconds ?? '?'} s. Tablas Parquet listas en Athena.`, 'success');
+            } else if (data.state === 'FAILED') {
+              showToast('Error en Star Schema ETL', data.error || 'El job finalizó en estado FAILED.', 'danger');
+            }
+          }
+        }
+      } catch (err) {
+        if (etlPollTimer) {
+          clearInterval(etlPollTimer);
+          etlPollTimer = null;
+        }
+        showToast('Error consultando estado ETL', err.message, 'danger');
+      }
+    }
+
+    document.getElementById('btn-refresh-star').addEventListener('click', async () => {
+      try {
+        const resp = await fetch('/admin/refresh-star', { method: 'POST' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        renderEtlStatus(data);
+        showToast('ETL Star Schema iniciado', `Job <code>${data.job_id}</code> en ejecución (polling cada 3 s)...`, 'warning');
+        if (!etlPollTimer) {
+          etlPollTimer = setInterval(() => pollEtlStatus(true), 3000);
+        }
+      } catch (err) {
+        showToast('No se pudo iniciar el refresh', err.message, 'danger');
+      }
+    });
+
+    // =========================================================================
+    // Initial Bootstrap
+    // =========================================================================
+    renderReservations();
+    fetchHealth();
+    pollLiveView();
+    pollEtlStatus(false);
+    setInterval(pollLiveView, 3000);
+  </script>
+</body>
+</html>

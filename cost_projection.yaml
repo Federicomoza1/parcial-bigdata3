@@ -1,0 +1,7 @@
+assumptions: "50,000 searches/day, 3,000 reservations/day, 360 cancellations/day; 1 provisioned Kinesis shard (24h retention) created via script only during active testing (~200 h/month); single EC2 t3.micro running FastAPI + SQLite WAL + unified Kinesis consumer + PyArrow Star ETL; ~5 GB in S3; ~20 GB/month scanned in Athena with 1 GB per-query cutoff."
+line_items:
+  - {service: "Kinesis", detail: "1 provisioned shard, 24h retention, no enhanced fan-out, active ~200 h/month while testing ($0.015/shard-hour)", monthly_usd: 3.00}
+  - {service: "EC2", detail: "1x t3.micro (2 vCPU, 1 GiB RAM) hosting FastAPI, SQLite WAL DB, Kinesis consumer and PyArrow ETL ($0.0104/h * 730 h)", monthly_usd: 7.59}
+  - {service: "S3", detail: "~5 GB Standard storage (gzipped JSONL landing zone, Parquet star schema, Athena results) + PUT/GET requests", monthly_usd: 0.25}
+  - {service: "Athena", detail: "~20 GB/month scanned on Snappy Parquet with month partition pruning ($5.00/TB, 1 GB workgroup query cutoff)", monthly_usd: 0.50}
+  - {service: "Glue Data Catalog", detail: "1 database, 5 Parquet tables and <100 monthly partitions (within AWS Glue 1M objects free tier)", monthly_usd: 0.00}
