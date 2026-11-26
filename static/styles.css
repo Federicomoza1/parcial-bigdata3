@@ -1,20 +1,28 @@
 /* Céfiro — booking site styles (complements Tailwind CDN) */
-.hero {
+.hero { background: #f3f6fa; }
+.hero::before {
+  /* colored band behind the headline: navy -> teal with a warm sunset glow */
+  content: ""; position: absolute; left: 0; right: 0; top: 0; bottom: 92px;
   background:
-    radial-gradient(1100px 380px at 85% -10%, rgba(14, 116, 144, 0.10), transparent 60%),
-    radial-gradient(900px 360px at 0% 0%, rgba(15, 42, 74, 0.07), transparent 60%),
-    linear-gradient(180deg, #ffffff 0%, #f3f6fa 100%);
+    radial-gradient(520px 260px at 88% 18%, rgba(242, 118, 91, .55), transparent 70%),
+    radial-gradient(700px 320px at 65% 120%, rgba(56, 189, 208, .35), transparent 70%),
+    linear-gradient(125deg, #0b1f38 0%, #0f2a4a 38%, #0e5f78 75%, #0e7490 100%);
+  border-bottom-left-radius: 28px; border-bottom-right-radius: 28px;
 }
 .hero::after {
   /* faint route lines, decorative only */
   content: "";
   position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='620' height='260' viewBox='0 0 620 260'%3E%3Cg fill='none' stroke='%230f2a4a' stroke-opacity='.10' stroke-dasharray='4 6'%3E%3Cpath d='M20 230C180 40 420 20 600 70'/%3E%3Cpath d='M60 250C260 140 420 150 610 210'/%3E%3C/g%3E%3Cg fill='%230e7490' fill-opacity='.35'%3E%3Ccircle cx='20' cy='230' r='3'/%3E%3Ccircle cx='600' cy='70' r='3'/%3E%3Ccircle cx='610' cy='210' r='3'/%3E%3C/g%3E%3C/svg%3E");
+  inset: 0 0 92px 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='620' height='260' viewBox='0 0 620 260'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.28' stroke-dasharray='4 6'%3E%3Cpath d='M20 230C180 40 420 20 600 70'/%3E%3Cpath d='M60 250C260 140 420 150 610 210'/%3E%3C/g%3E%3Cg fill='%23ffd1c4'%3E%3Ccircle cx='20' cy='230' r='3.5'/%3E%3Ccircle cx='600' cy='70' r='3.5'/%3E%3Ccircle cx='610' cy='210' r='3.5'/%3E%3C/g%3E%3Cpath d='M592 62l14 8-14 8 3-8z' fill='%23ffffff' fill-opacity='.85'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 4% top 30px;
   pointer-events: none;
 }
+.hero h1 { color: #ffffff; }
+.hero > div:first-child p { color: #c9dbe8; }
+.hero > div:first-child p:first-child { color: #ffb4a2; }
+.hero #popular { color: #64748b; }
 .shadow-card { box-shadow: 0 1px 2px rgba(15, 42, 74, 0.04), 0 8px 24px -12px rgba(15, 42, 74, 0.18); }
 
 .field-label { display: block; font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 6px; }
@@ -26,10 +34,12 @@
 .field:focus { outline: none; border-color: #0e7490; box-shadow: 0 0 0 3px rgba(14, 116, 144, .15); }
 
 .btn-primary {
-  border-radius: 12px; background: #0f2a4a; color: #fff; font-size: 14px; font-weight: 600;
-  transition: background .15s, opacity .15s;
+  border-radius: 12px; background: linear-gradient(135deg, #0e7490 0%, #0f2a4a 100%); color: #fff; font-size: 14px; font-weight: 600;
+  box-shadow: 0 6px 16px -8px rgba(14, 116, 144, .7);
+  transition: filter .15s, opacity .15s, transform .15s;
 }
-.btn-primary:hover { background: #163050; }
+.btn-primary:hover { filter: brightness(1.12); }
+.btn-primary:active { transform: translateY(1px); }
 .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
 .btn-secondary {
   border-radius: 10px; border: 1px solid #e2e8f0; background: #fff; color: #0f2a4a;
@@ -37,11 +47,11 @@
 }
 .btn-secondary:hover { border-color: #c7d4e5; background: #f3f6fa; }
 
-.chip { border: 1px solid #e2e8f0; background: #fff; border-radius: 999px; padding: 4px 10px; color: #334155; transition: border-color .15s; }
-.chip:hover { border-color: #0e7490; color: #0e7490; }
+.chip { border: 1px solid #cfe7ee; background: #f0f9fb; border-radius: 999px; padding: 4px 10px; color: #0b5f76; transition: border-color .15s, background .15s; }
+.chip:hover { border-color: #f2765b; background: #fff4f1; color: #c2462b; }
 
 .view-btn { padding: 6px 12px; border-radius: 9px; color: #64748b; transition: background .15s, color .15s; }
-.view-btn.is-active { background: #0f2a4a; color: #fff; }
+.view-btn.is-active { background: linear-gradient(135deg, #0e7490, #0f2a4a); color: #fff; }
 
 section { scroll-margin-top: 84px; }
 
@@ -56,27 +66,27 @@ section { scroll-margin-top: 84px; }
 .seat { cursor: pointer; outline: none; }
 .seat .base { transition: fill .15s, stroke .15s; stroke-width: 1.2; }
 .seat .back { transition: fill .15s; }
-.seat.eco .base { fill: #ffffff; stroke: #94a3b8; }
-.seat.eco .back { fill: #cbd5e1; }
-.seat.biz .base { fill: #e4ebf4; stroke: #1e3a5f; }
-.seat.biz .back { fill: #1e3a5f; opacity: .55; }
-.seat.free:hover .base, .seat.free:focus-visible .base { stroke: #0e7490; stroke-width: 2.2; fill: #ecf8fb; }
+.seat.eco .base { fill: #eef8fb; stroke: #5ba6b8; }
+.seat.eco .back { fill: #8fc9d6; }
+.seat.biz .base { fill: #fbf2e2; stroke: #b7862f; }
+.seat.biz .back { fill: #b7862f; opacity: .8; }
+.seat.free:hover .base, .seat.free:focus-visible .base { stroke: #f2765b; stroke-width: 2.2; fill: #fff1ec; }
 .seat.occ { cursor: not-allowed; }
 .seat.occ .base { fill: #e2e8f0; stroke: #e2e8f0; }
 .seat.occ .back { fill: #cbd5e1; }
 .seat.mine { cursor: default; }
 .seat.mine .base { fill: #0f2a4a; stroke: #0f2a4a; }
 .seat.mine .back { fill: #0b1f38; }
-.seat.free.sel .base, .seat.free.sel:hover .base, .seat.free.sel:focus-visible .base { fill: #0e7490; stroke: #0b5f76; stroke-width: 2; }
-.seat.free.sel .back { fill: #0b5f76; }
+.seat.free.sel .base, .seat.free.sel:hover .base, .seat.free.sel:focus-visible .base { fill: #f2765b; stroke: #d4553a; stroke-width: 2; }
+.seat.free.sel .back { fill: #c2462b; }
 .seat .mark { pointer-events: none; }
 
 .legend { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-.lg-biz { background: #e4ebf4; border: 1px solid #1e3a5f; }
-.lg-eco { background: #fff; border: 1px solid #94a3b8; }
+.lg-biz { background: #fbf2e2; border: 1px solid #b7862f; }
+.lg-eco { background: #eef8fb; border: 1px solid #5ba6b8; }
 .lg-occ { background: #e2e8f0; }
-.lg-sel { background: #0e7490; }
+.lg-sel { background: #f2765b; }
 .lg-mine { background: #0f2a4a; }
 
 .seat-tooltip {
@@ -87,7 +97,13 @@ section { scroll-margin-top: 84px; }
 
 /* ---------- Trips (boarding-pass style) ---------- */
 .pass { position: relative; }
-.pass .perf { border-left: 2px dashed #e2e8f0; }
+.pass .perf { border-left: 2px dashed rgba(255,255,255,.35); background: linear-gradient(160deg, #0e7490 0%, #0f2a4a 100%) !important; }
+.pass .perf .text-ink { color: #fff; }
+.pass .perf .text-slate-500 { color: #b9d9e3; }
+.pass .perf [data-cancel] { color: #ffb4a2; }
+.pass .perf [data-cancel]:hover { color: #fff; }
+.pass.opacity-70 .perf { background: linear-gradient(160deg, #94a3b8, #64748b) !important; }
+.pass::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, #f2765b, #0e7490); }
 .status { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
 .status.ok { background: #ecf8fb; color: #0b5f76; }
 .status.cx { background: #fef2f2; color: #b91c1c; }
@@ -100,3 +116,23 @@ section { scroll-margin-top: 84px; }
 @media (prefers-reduced-motion: reduce) {
   .plane-tilt, .toast, .fade-in { transition: none !important; animation: none !important; }
 }
+
+/* ---------- Color accents ---------- */
+.bg-coral { background: #f2765b; }
+.flight-card { position: relative; overflow: hidden; transition: transform .15s, box-shadow .15s; }
+.flight-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, #0e7490, #f2765b); }
+.flight-card:hover { transform: translateY(-2px); box-shadow: 0 1px 2px rgba(15,42,74,.04), 0 14px 30px -14px rgba(14,116,144,.45); }
+.price-eco { color: #0e7490; }
+.biz-tag { display: inline-block; font-weight: 600; color: #8a5f17; background: #fbf2e2; border: 1px solid #ecd4a6; border-radius: 6px; padding: 0 6px; margin-right: 2px; }
+
+.sum-card { background: radial-gradient(260px 140px at 100% 0%, rgba(242,118,91,.45), transparent 70%), linear-gradient(140deg, #0f2a4a, #0e7490); color: #fff; }
+.sum-card .text-ink { color: #fff; }
+.sum-card .text-slate-500, .sum-card .text-slate-600 { color: #bfd8e3; }
+.sum-card svg { color: rgba(255,255,255,.5); }
+#sel-price { color: #0e7490; }
+
+.site-footer { background: #0b1f38; color: #9fb3c8; }
+.site-footer a:hover { color: #fff; }
+#trips-count { background: #f2765b !important; }
+.site-footer .text-slate-500 { color: #9fb3c8; }
+.site-footer a.hover\:text-ink:hover { color: #fff; }

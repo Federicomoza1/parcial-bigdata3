@@ -118,7 +118,7 @@
       const full = f.seats_available <= 0;
       const [o, d] = String(f.route).split('-');
       return `
-        <article class="fade-in bg-white rounded-2xl border border-slate-200 shadow-card p-5 grid sm:grid-cols-[1fr_auto] gap-4 items-center" style="animation-delay:${i * 40}ms">
+        <article class="flight-card fade-in bg-white rounded-2xl border border-slate-200 shadow-card p-5 grid sm:grid-cols-[1fr_auto] gap-4 items-center" style="animation-delay:${i * 40}ms">
           <div class="flex items-center gap-6">
             <div>
               <div class="text-2xl font-semibold text-ink">${esc(o)}</div>
@@ -126,7 +126,7 @@
             </div>
             <div class="flex-1 min-w-[80px] max-w-[180px] text-center">
               <div class="text-[11px] text-slate-400 font-mono">${esc(f.flight_id)}</div>
-              <div class="my-1 h-px bg-slate-200 relative"><span class="absolute right-0 -top-[3px] w-[7px] h-[7px] rounded-full bg-accent"></span></div>
+              <div class="my-1 h-px bg-slate-200 relative"><span class="absolute right-0 -top-[3px] w-[7px] h-[7px] rounded-full bg-coral"></span></div>
               <div class="text-[11px] text-slate-400">Directo</div>
             </div>
             <div>
@@ -137,8 +137,8 @@
           <div class="flex items-center gap-5 sm:justify-end">
             <div class="text-right">
               <div class="text-xs text-slate-500">Economy desde</div>
-              <div class="text-xl font-semibold text-ink">${money(f.price_cents)}</div>
-              <div class="text-xs text-slate-500">Business ${money(bizPrice(f.price_cents))}</div>
+              <div class="text-xl font-semibold price-eco">${money(f.price_cents)}</div>
+              <div class="text-xs"><span class="biz-tag">Business</span> ${money(bizPrice(f.price_cents))}</div>
             </div>
             <div class="text-right">
               <div class="text-xs ${full ? 'text-rose-600' : f.seats_available <= 5 ? 'text-amber-600' : 'text-slate-500'} mb-2">
@@ -258,21 +258,23 @@
       <linearGradient id="gWing" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#eef2f7"/><stop offset="1" stop-color="#d9e1eb"/></linearGradient>
       <linearGradient id="gBody" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#e9eef4"/><stop offset=".18" stop-color="#ffffff"/><stop offset=".82" stop-color="#ffffff"/><stop offset="1" stop-color="#e9eef4"/></linearGradient>
       <linearGradient id="gEng" x1="0" x2="1"><stop offset="0" stop-color="#cfd8e3"/><stop offset=".5" stop-color="#f4f7fa"/><stop offset="1" stop-color="#cfd8e3"/></linearGradient>
+      <linearGradient id="gTail" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#0e7490"/><stop offset=".55" stop-color="#0f2a4a"/><stop offset="1" stop-color="#0f2a4a"/></linearGradient>
+      <linearGradient id="gStab" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#d7eef3"/><stop offset="1" stop-color="#b9dde6"/></linearGradient>
       <filter id="shadow" x="-20%" y="-10%" width="140%" height="120%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0f2a4a" flood-opacity=".14"/></filter>
     </defs>`);
     parts.push(`<g filter="url(#shadow)">
       <path d="${wing(1)}" fill="url(#gWing)" stroke="#c7d2de"/>
       <path d="${wing(-1)}" fill="url(#gWing)" stroke="#c7d2de"/>
-      <path d="${stab(1)}" fill="url(#gWing)" stroke="#c7d2de"/>
-      <path d="${stab(-1)}" fill="url(#gWing)" stroke="#c7d2de"/>
+      <path d="${stab(1)}" fill="url(#gStab)" stroke="#9cc9d5"/>
+      <path d="${stab(-1)}" fill="url(#gStab)" stroke="#9cc9d5"/>
       <path d="${body}" fill="url(#gBody)" stroke="#c7d2de" stroke-width="1.2"/>
     </g>`);
     // engines (in front of wing leading edge)
     [1, -1].forEach((s) => parts.push(
       `<rect x="${s * engX - 15}" y="${engY - 40}" width="30" height="80" rx="14" fill="url(#gEng)" stroke="#b8c4d2"/>
-       <rect x="${s * engX - 11}" y="${engY - 40}" width="22" height="6" rx="3" fill="#9aa9ba"/>`));
+       <rect x="${s * engX - 11}" y="${engY - 40}" width="22" height="6" rx="3" fill="#0e7490"/>`));
     // vertical fin (seen from above) in brand color
-    parts.push(`<rect x="-5" y="${tailY - 60}" width="10" height="${total - tailY + 52}" rx="5" fill="#0f2a4a"/>`);
+    parts.push(`<rect x="-5" y="${tailY - 60}" width="10" height="${total - tailY + 52}" rx="5" fill="url(#gTail)"/><rect x="-1.5" y="${tailY - 52}" width="3" height="${total - tailY + 36}" rx="1.5" fill="#f2765b"/>`);
     // cockpit windshield
     parts.push(`<path d="M -42 92 Q 0 66 42 92 L 36 106 Q 0 86 -36 106 Z" fill="#1e3a5f" opacity=".85"/>`);
     // cabin floor (cut-away interior)
@@ -290,12 +292,12 @@
       return letters.map((L) => `<text x="${seatX(cabin, L) + g.w / 2}" y="${yy}" text-anchor="middle" font-size="10" font-weight="600" fill="#94a3b8">${L}</text>`).join('');
     };
     if (rowsBiz.length) {
-      parts.push(`<text x="0" y="${bizStart - 20}" text-anchor="middle" font-size="10" letter-spacing="2" font-weight="600" fill="#1e3a5f">BUSINESS</text>`);
+      parts.push(`<text x="0" y="${bizStart - 20}" text-anchor="middle" font-size="10" letter-spacing="2" font-weight="700" fill="#a4762a">BUSINESS</text>`);
       parts.push(letterRow('BUSINESS', bizStart - 6));
     }
     if (rowsEco.length) {
       parts.push(`<line x1="${-R + 24}" x2="${R - 24}" y1="${ecoStart - 26}" y2="${ecoStart - 26}" stroke="#e2e8f0"/>`);
-      parts.push(`<text x="0" y="${ecoStart - 14}" text-anchor="middle" font-size="10" letter-spacing="2" font-weight="600" fill="#64748b">ECONOMY</text>`);
+      parts.push(`<text x="0" y="${ecoStart - 14}" text-anchor="middle" font-size="10" letter-spacing="2" font-weight="700" fill="#0e7490">ECONOMY</text>`);
       parts.push(letterRow('ECONOMY', ecoStart - 3));
     }
     // row numbers in the aisle
